@@ -5,34 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen">
-  <meta name="theme-color" content="#1a1a2e">
-  <meta name="description" content="Snake game optimized for iPad">
-  <title>Snake</title>
+  <meta name="theme-color" content="#0e1a0e">
+  <meta name="description" content="Snake — Forest Edition">
+  <title>Snake 🌿</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
 
+    <!-- Mute button (always visible) -->
+    <button id="btn-mute" aria-label="Mute">🔊</button>
+
     <!-- Score HUD -->
     <div id="hud">
-      <span id="score-display">0</span>
-      <span id="high-score-display">Best: 0</span>
+      <div id="hud-left">
+        <span id="score-display">0</span>
+        <span id="high-score-display">Best: 0</span>
+      </div>
+      <div id="hud-right">
+        <span id="timer-display" class="hidden">60</span>
+        <button id="btn-pause" class="hidden" aria-label="Pause">&#9646;&#9646;</button>
+      </div>
     </div>
+
+    <!-- Power-up bar (shown during gameplay) -->
+    <div id="powerup-bar"></div>
 
     <!-- Start screen -->
     <div id="screen-start" class="overlay">
       <div class="overlay-content">
         <h1 class="game-title">SNAKE</h1>
-        <p class="subtitle">Swipe to move</p>
+        <p class="subtitle">🌿 Forest Edition</p>
+
+        <div class="selector-group">
+          <p class="selector-label">Mode</p>
+          <div class="mode-selector">
+            <button class="mode-btn active" data-mode="classic">Classic</button>
+            <button class="mode-btn" data-mode="timed">Timed 60s</button>
+          </div>
+        </div>
+
+        <div class="selector-group">
+          <p class="selector-label">Difficulty</p>
+          <div class="difficulty-selector">
+            <button class="diff-btn" data-diff="easy">Easy</button>
+            <button class="diff-btn active" data-diff="medium">Medium</button>
+            <button class="diff-btn" data-diff="hard">Hard</button>
+          </div>
+        </div>
+
         <button id="btn-start" class="btn-primary">Play</button>
+        <p class="controls-hint">Arrow keys / WASD / Swipe</p>
       </div>
     </div>
 
     <!-- Pause screen -->
     <div id="screen-pause" class="overlay hidden">
       <div class="overlay-content">
-        <h2>Paused</h2>
+        <h2 class="pause-title">Paused</h2>
         <button id="btn-resume" class="btn-primary">Resume</button>
         <button id="btn-restart-pause" class="btn-secondary">Restart</button>
       </div>
@@ -44,17 +75,17 @@
         <h2 class="gameover-title">Game Over</h2>
         <p class="final-score-label">Score</p>
         <p id="final-score" class="final-score">0</p>
-        <p id="new-high-score" class="new-record hidden">New Record!</p>
+        <p id="new-high-score" class="new-record hidden">🏆 New Record!</p>
+        <div id="gameover-stats"></div>
         <button id="btn-restart" class="btn-primary">Play Again</button>
+        <button id="btn-menu" class="btn-secondary">Menu</button>
       </div>
     </div>
-
-    <!-- Pause button (shown during gameplay) -->
-    <button id="btn-pause" class="hidden" aria-label="Pause">&#9646;&#9646;</button>
   </div>
 
   <script src="js/config.js"></script>
   <script src="js/input.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/renderer.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
