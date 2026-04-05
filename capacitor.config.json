@@ -1,0 +1,11 @@
+{
+  "appId": "com.yourname.snakeforest",
+  "appName": "Snake Forest",
+  "webDir": "snake",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "Haptics": {}
+  }
+}

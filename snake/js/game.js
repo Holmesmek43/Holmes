@@ -175,14 +175,16 @@ const Game = (() => {
       case 'ghost':
         state.ghostMode = true;
         Audio.playGhost();
+        Haptics.medium();
         break;
       case 'shield':
         state.shieldActive = true;
         Audio.playPowerUp();
+        Haptics.medium();
         break;
     }
 
-    if (type !== 'ghost' && type !== 'shield') Audio.playPowerUp();
+    if (type !== 'ghost' && type !== 'shield') { Audio.playPowerUp(); Haptics.medium(); }
   }
 
   function expirePowerUps() {
@@ -224,6 +226,7 @@ const Game = (() => {
       if (state.timerSeconds <= 10) {
         elTimer.classList.add('urgent');
         Audio.playUrgentTick();
+        Haptics.warning();
       } else {
         Audio.playTick();
       }
@@ -318,6 +321,7 @@ const Game = (() => {
         state.shieldActive = false;
         state.activePowerUps = state.activePowerUps.filter(p => p.type !== 'shield');
         Audio.playShield();
+        Haptics.heavy();
         updatePowerUpBar();
         Renderer.draw(state);
         tickTimer = setTimeout(tick, state.tickMs);
@@ -337,6 +341,7 @@ const Game = (() => {
         state.shieldActive = false;
         state.activePowerUps = state.activePowerUps.filter(p => p.type !== 'shield');
         Audio.playShield();
+        Haptics.heavy();
         updatePowerUpBar();
         Renderer.draw(state);
         tickTimer = setTimeout(tick, state.tickMs);
@@ -363,13 +368,15 @@ const Game = (() => {
       spawnParticles(foodPixelX, foodPixelY, pColor, 12);
       spawnFloatingText(foodPixelX, foodPixelY, `+${points}`, pColor);
 
-      // Sound
+      // Sound + Haptics
       if (state.foodType === 'golden') {
         Audio.playGolden();
+        Haptics.medium();
       } else if (state.foodType !== 'normal') {
         activatePowerUp(state.foodType);
       } else {
         Audio.playEat();
+        Haptics.light();
       }
 
       // Spawn new food
@@ -402,6 +409,7 @@ const Game = (() => {
     clearTimeout(tickTimer);
     stopTimer();
     Audio.playGameOver();
+    Haptics.error();
     triggerScreenShake();
 
     Renderer.draw(state);
@@ -412,6 +420,7 @@ const Game = (() => {
       saveHighScore(state.score);
       spawnConfetti();
       Audio.playNewRecord();
+      Haptics.success();
     }
 
     elFinalScore.textContent = state.score;
@@ -523,12 +532,12 @@ const Game = (() => {
     drawIdle();
     initSelectors();
 
-    document.getElementById('btn-start').addEventListener('click', start);
-    document.getElementById('btn-restart').addEventListener('click', start);
-    document.getElementById('btn-restart-pause').addEventListener('click', start);
-    document.getElementById('btn-resume').addEventListener('click', resume);
-    document.getElementById('btn-menu').addEventListener('click', goToMenu);
-    btnPause.addEventListener('click', pause);
+    document.getElementById('btn-start').addEventListener('click', () => { Haptics.selection(); start(); });
+    document.getElementById('btn-restart').addEventListener('click', () => { Haptics.selection(); start(); });
+    document.getElementById('btn-restart-pause').addEventListener('click', () => { Haptics.selection(); start(); });
+    document.getElementById('btn-resume').addEventListener('click', () => { Haptics.selection(); resume(); });
+    document.getElementById('btn-menu').addEventListener('click', () => { Haptics.selection(); goToMenu(); });
+    btnPause.addEventListener('click', () => { Haptics.selection(); pause(); });
 
     btnMute.addEventListener('click', () => {
       const nowMuted = Audio.toggleMute();
