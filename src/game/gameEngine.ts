@@ -28,6 +28,22 @@ export interface MoveResult {
   won: boolean
 }
 
+// Returns every square the token visits during a roll (for step-by-step animation)
+export function getMovementSteps(from: number, roll: number): number[] {
+  const steps: number[] = []
+  const raw = from + roll
+
+  if (raw > TOTAL_SQUARES) {
+    // Walk up to 100, then bounce back
+    for (let i = from + 1; i <= TOTAL_SQUARES; i++) steps.push(i)
+    const bounce = TOTAL_SQUARES - (raw - TOTAL_SQUARES)
+    for (let i = TOTAL_SQUARES - 1; i >= bounce; i--) steps.push(i)
+  } else {
+    for (let i = from + 1; i <= raw; i++) steps.push(i)
+  }
+  return steps
+}
+
 export function movePlayer(currentPosition: number, roll: number): MoveResult {
   let next = currentPosition + roll
 

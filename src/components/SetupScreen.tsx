@@ -39,6 +39,7 @@ export function SetupScreen({ onStart }: Props) {
         neonColor: PLAYER_CONFIGS[0].neonColor,
         emoji: PLAYER_CONFIGS[0].emoji,
         position: 0,
+        visualPosition: 0,
         isMoving: false,
       },
       ...Array.from({ length: rivalCount }, (_, i) => ({
@@ -50,6 +51,7 @@ export function SetupScreen({ onStart }: Props) {
         neonColor: PLAYER_CONFIGS[i + 1].neonColor,
         emoji: PLAYER_CONFIGS[i + 1].emoji,
         position: 0,
+        visualPosition: 0,
         isMoving: false,
       })),
     ]

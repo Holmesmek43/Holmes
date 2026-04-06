@@ -1,5 +1,5 @@
 import { useReducer, useCallback } from 'react'
-import { Difficulty, movePlayer } from '../game/gameEngine'
+import { Difficulty, movePlayer, getMovementSteps } from '../game/gameEngine'
 import { getAIMove } from '../game/aiEngine'
 import { sounds } from '../game/sounds'
 
@@ -11,17 +11,18 @@ export interface Player {
   name: string
   type: PlayerType
   difficulty?: Difficulty
-  color: string      // tailwind color key
-  neonColor: string  // hex
+  color: string
+  neonColor: string
   emoji: string
-  position: number
+  position: number       // game-truth: updated only at end of move
+  visualPosition: number // display: updated step-by-step for animation
   isMoving: boolean
 }
 
 export interface GameState {
   phase: GamePhase
   players: Player[]
-  currentTurn: number  // index into players
+  currentTurn: number
   lastRoll: number | null
   lastSpecial: 'ladder' | 'chute' | null
   winner: Player | null
@@ -32,6 +33,7 @@ export interface GameState {
 type Action =
   | { type: 'START_GAME'; players: Player[] }
   | { type: 'ROLL_DICE'; roll: number }
+  | { type: 'SET_VISUAL_POS'; playerId: number; pos: number }
   | { type: 'APPLY_MOVE'; playerId: number; result: ReturnType<typeof movePlayer> }
   | { type: 'NEXT_TURN' }
   | { type: 'SET_ANIMATING'; value: boolean }
@@ -56,24 +58,42 @@ function reducer(state: GameState, action: Action): GameState {
     case 'ROLL_DICE':
       return { ...state, lastRoll: action.roll, lastSpecial: null }
 
+    case 'SET_VISUAL_POS':
+      return {
+        ...state,
+        players: state.players.map(p =>
+          p.id === action.playerId
+            ? { ...p, visualPosition: action.pos, isMoving: true }
+            : p
+        ),
+      }
+
     case 'APPLY_MOVE': {
       const players = state.players.map(p =>
         p.id === action.playerId
-          ? { ...p, position: action.result.newPosition, isMoving: false }
+          ? {
+              ...p,
+              position: action.result.newPosition,
+              visualPosition: action.result.newPosition,
+              isMoving: false,
+            }
           : p
       )
-      const winner = action.result.won ? players.find(p => p.id === action.playerId) ?? null : null
+      const winner = action.result.won
+        ? players.find(p => p.id === action.playerId) ?? null
+        : null
       return {
         ...state,
         players,
         lastSpecial: action.result.special,
         winner,
         phase: winner ? 'won' : 'playing',
-        message: action.result.special === 'ladder'
-          ? '🪜 Ladder! Climbing up!'
-          : action.result.special === 'chute'
-          ? '🐍 Chute! Sliding down!'
-          : '',
+        message:
+          action.result.special === 'ladder'
+            ? '🪜 Ladder! Climbing up!'
+            : action.result.special === 'chute'
+            ? '🐍 Chute! Sliding down!'
+            : '',
       }
     }
 
@@ -93,6 +113,22 @@ function reducer(state: GameState, action: Action): GameState {
   }
 }
 
+// ─── Step-by-step movement animator ───────────────────────────────────────────
+async function animateMove(
+  dispatch: React.Dispatch<Action>,
+  playerId: number,
+  from: number,
+  roll: number,
+  stepMs = 130
+) {
+  const steps = getMovementSteps(from, roll)
+  for (const step of steps) {
+    dispatch({ type: 'SET_VISUAL_POS', playerId, pos: step })
+    await delay(stepMs)
+  }
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 export function useGameState() {
   const [state, dispatch] = useReducer(reducer, initialState)
 
@@ -104,7 +140,6 @@ export function useGameState() {
     dispatch({ type: 'RESET' })
   }, [])
 
-  // Human rolls
   const humanRoll = useCallback(async () => {
     if (state.isAnimating || state.phase !== 'playing') return
     const currentPlayer = state.players[state.currentTurn]
@@ -112,41 +147,41 @@ export function useGameState() {
 
     dispatch({ type: 'SET_ANIMATING', value: true })
     sounds.dice()
-
-    // Short delay for dice animation
     await delay(600)
 
     const roll = Math.floor(Math.random() * 6) + 1
     dispatch({ type: 'ROLL_DICE', roll })
-    sounds.move()
 
-    await delay(400)
+    // Step-by-step movement
+    await delay(250)
+    await animateMove(dispatch, currentPlayer.id, currentPlayer.position, roll)
 
     const result = movePlayer(currentPlayer.position, roll)
-    dispatch({ type: 'APPLY_MOVE', playerId: currentPlayer.id, result })
 
-    if (result.special === 'ladder') {
-      await delay(200)
-      sounds.ladder()
-    } else if (result.special === 'chute') {
-      await delay(200)
-      sounds.chute()
+    if (result.special) {
+      await delay(350)
+      if (result.special === 'ladder') sounds.ladder()
+      else sounds.chute()
+      // Animate to chute/ladder destination
+      dispatch({ type: 'SET_VISUAL_POS', playerId: currentPlayer.id, pos: result.newPosition })
+      await delay(700)
     }
 
+    dispatch({ type: 'APPLY_MOVE', playerId: currentPlayer.id, result })
+
     if (result.won) {
-      await delay(500)
+      await delay(300)
       sounds.win()
       dispatch({ type: 'SET_ANIMATING', value: false })
       return
     }
 
-    await delay(800)
+    await delay(500)
     dispatch({ type: 'NEXT_TURN' })
     sounds.turn()
     dispatch({ type: 'SET_ANIMATING', value: false })
   }, [state])
 
-  // AI takes its turn
   const aiTakeTurn = useCallback(async (playerIndex: number) => {
     const currentPlayer = state.players[playerIndex]
     if (!currentPlayer || currentPlayer.type !== 'ai') return
@@ -154,34 +189,34 @@ export function useGameState() {
     dispatch({ type: 'SET_ANIMATING', value: true })
 
     const { roll, thinkTime } = getAIMove(currentPlayer.difficulty ?? 'medium')
-
-    // "Thinking" delay
     await delay(thinkTime)
+
     sounds.dice()
     dispatch({ type: 'ROLL_DICE', roll })
 
-    await delay(600)
-    sounds.move()
+    await delay(250)
+    await animateMove(dispatch, currentPlayer.id, currentPlayer.position, roll)
 
     const result = movePlayer(currentPlayer.position, roll)
-    dispatch({ type: 'APPLY_MOVE', playerId: currentPlayer.id, result })
 
-    if (result.special === 'ladder') {
-      await delay(200)
-      sounds.ladder()
-    } else if (result.special === 'chute') {
-      await delay(200)
-      sounds.chute()
+    if (result.special) {
+      await delay(350)
+      if (result.special === 'ladder') sounds.ladder()
+      else sounds.chute()
+      dispatch({ type: 'SET_VISUAL_POS', playerId: currentPlayer.id, pos: result.newPosition })
+      await delay(700)
     }
 
+    dispatch({ type: 'APPLY_MOVE', playerId: currentPlayer.id, result })
+
     if (result.won) {
-      await delay(500)
+      await delay(300)
       sounds.win()
       dispatch({ type: 'SET_ANIMATING', value: false })
       return
     }
 
-    await delay(900)
+    await delay(500)
     dispatch({ type: 'NEXT_TURN' })
     sounds.turn()
     dispatch({ type: 'SET_ANIMATING', value: false })

@@ -17,13 +17,13 @@ const CELL_COLORS = [
 export function Board({ players, size }: Props) {
   const cellSize = size / 10
 
-  // Group players by position for stacking
+  // Group players by visualPosition for stacking during animation
   const playersByPosition = useMemo(() => {
     const map: Record<number, Player[]> = {}
     players.forEach(p => {
-      if (p.position > 0) {
-        if (!map[p.position]) map[p.position] = []
-        map[p.position].push(p)
+      if (p.visualPosition > 0) {
+        if (!map[p.visualPosition]) map[p.visualPosition] = []
+        map[p.visualPosition].push(p)
       }
     })
     return map
@@ -176,13 +176,12 @@ export function Board({ players, size }: Props) {
 
       {/* Player tokens */}
       {players.map(player => {
-        const onSquare = playersByPosition[player.position] ?? []
+        const onSquare = playersByPosition[player.visualPosition] ?? []
         const idx = onSquare.findIndex(p => p.id === player.id)
         return (
           <Token
             key={player.id}
             player={player}
-            boardSize={size}
             cellSize={cellSize}
             tokenIndex={idx}
             totalOnSquare={onSquare.length}
