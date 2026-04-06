@@ -41,6 +41,9 @@ export function SetupScreen({ onStart }: Props) {
         position: 0,
         visualPosition: 0,
         isMoving: false,
+        activePowerup: null,
+        shieldActive: false,
+        stats: { rolls: 0, ladders: 0, chutes: 0, squaresTravelled: 0 },
       },
       ...Array.from({ length: rivalCount }, (_, i) => ({
         id: i + 1,
@@ -53,6 +56,9 @@ export function SetupScreen({ onStart }: Props) {
         position: 0,
         visualPosition: 0,
         isMoving: false,
+        activePowerup: null,
+        shieldActive: false,
+        stats: { rolls: 0, ladders: 0, chutes: 0, squaresTravelled: 0 },
       })),
     ]
     onStart(players)

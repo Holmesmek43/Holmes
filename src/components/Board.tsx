@@ -1,23 +1,18 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { CHUTES, LADDERS, squareToPos } from '../game/boardData'
-import { Player } from '../hooks/useGameState'
+import { CHUTES, LADDERS, POWERUP_SQUARES, POWERUP_LABELS, squareToPos } from '../game/boardData'
+import { Player, ActivatedSpecial } from '../hooks/useGameState'
 import { Token } from './Token'
 
 interface Props {
   players: Player[]
-  size: number  // board px size (square)
+  size: number
+  activatedSpecial: ActivatedSpecial | null
 }
 
-const CELL_COLORS = [
-  ['#1a1a3e', '#162040', '#1e1040', '#162040', '#1a1a3e', '#162040', '#1e1040', '#162040', '#1a1a3e', '#162040'],
-  ['#162040', '#1a1a3e', '#162040', '#1e1040', '#162040', '#1a1a3e', '#162040', '#1e1040', '#162040', '#1a1a3e'],
-]
-
-export function Board({ players, size }: Props) {
+export function Board({ players, size, activatedSpecial }: Props) {
   const cellSize = size / 10
 
-  // Group players by visualPosition for stacking during animation
   const playersByPosition = useMemo(() => {
     const map: Record<number, Player[]> = {}
     players.forEach(p => {
@@ -29,7 +24,6 @@ export function Board({ players, size }: Props) {
     return map
   }, [players])
 
-  // Build cells
   const cells = useMemo(() => {
     return Array.from({ length: 100 }, (_, idx) => {
       const square = idx + 1
@@ -40,9 +34,8 @@ export function Board({ players, size }: Props) {
     })
   }, [])
 
-  // Compute ladder/chute SVG lines
   const svgLines = useMemo(() => {
-    const lines: { x1: number; y1: number; x2: number; y2: number; type: 'ladder' | 'chute' }[] = []
+    const lines: { x1: number; y1: number; x2: number; y2: number; type: 'ladder' | 'chute'; from: number }[] = []
 
     LADDERS.forEach(({ from, to }) => {
       const f = squareToPos(from)
@@ -53,6 +46,7 @@ export function Board({ players, size }: Props) {
         x2: t.col * cellSize + cellSize / 2,
         y2: (9 - t.row) * cellSize + cellSize / 2,
         type: 'ladder',
+        from,
       })
     })
 
@@ -65,6 +59,7 @@ export function Board({ players, size }: Props) {
         x2: t.col * cellSize + cellSize / 2,
         y2: (9 - t.row) * cellSize + cellSize / 2,
         type: 'chute',
+        from,
       })
     })
 
@@ -82,31 +77,57 @@ export function Board({ players, size }: Props) {
       }}
     >
       {/* Cells */}
-      {cells.map(({ square, col, displayRow, colorIdx }) => (
-        <div
-          key={square}
-          className="absolute flex flex-col items-center justify-between p-0.5"
-          style={{
-            width: cellSize,
-            height: cellSize,
-            left: col * cellSize,
-            top: displayRow * cellSize,
-            background: colorIdx === 0 ? '#1a1a3e' : '#0d1b2a',
-            borderRight: '1px solid #2a2a4a30',
-            borderBottom: '1px solid #2a2a4a30',
-          }}
-        >
-          <span
-            className="font-game font-bold leading-none"
+      {cells.map(({ square, col, displayRow, colorIdx }) => {
+        const powerup = POWERUP_SQUARES[square]
+        return (
+          <div
+            key={square}
+            className="absolute flex flex-col items-center justify-between p-0.5"
             style={{
-              fontSize: cellSize * 0.22,
-              color: square === 100 ? '#ffe500' : '#ffffff30',
+              width: cellSize,
+              height: cellSize,
+              left: col * cellSize,
+              top: displayRow * cellSize,
+              background: colorIdx === 0 ? '#1a1a3e' : '#0d1b2a',
+              borderRight: '1px solid #2a2a4a30',
+              borderBottom: '1px solid #2a2a4a30',
             }}
           >
-            {square === 100 ? '★' : square}
-          </span>
-        </div>
-      ))}
+            <span
+              className="font-game font-bold leading-none"
+              style={{
+                fontSize: cellSize * 0.22,
+                color: square === 100 ? '#ffe500' : '#ffffff30',
+              }}
+            >
+              {square === 100 ? '★' : square}
+            </span>
+
+            {/* Power-up square indicator */}
+            {powerup && (
+              <motion.div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <div
+                  className="flex items-center justify-center rounded-full"
+                  style={{
+                    width: cellSize * 0.55,
+                    height: cellSize * 0.55,
+                    background: '#ffe50015',
+                    border: '1.5px solid #ffe50060',
+                    boxShadow: '0 0 6px #ffe50040',
+                    fontSize: cellSize * 0.3,
+                  }}
+                >
+                  {POWERUP_LABELS[powerup].icon}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        )
+      })}
 
       {/* SVG overlay for chutes & ladders */}
       <svg
@@ -124,54 +145,65 @@ export function Board({ players, size }: Props) {
             <feGaussianBlur stdDeviation="2" result="coloredBlur" />
             <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
+          <filter id="glow-active">
+            <feGaussianBlur stdDeviation="6" result="coloredBlur" />
+            <feMerge><feMergeNode in="coloredBlur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
 
-        {svgLines.map((line, i) => (
-          <g key={i}>
-            {line.type === 'ladder' ? (
-              <>
-                {/* Ladder: two rails + rungs */}
-                <line
-                  x1={line.x1 - 4} y1={line.y1} x2={line.x2 - 4} y2={line.y2}
-                  stroke="#00ff88" strokeWidth={3} strokeLinecap="round"
-                  filter="url(#glow-ladder)" opacity={0.85}
-                />
-                <line
-                  x1={line.x1 + 4} y1={line.y1} x2={line.x2 + 4} y2={line.y2}
-                  stroke="#00ff88" strokeWidth={3} strokeLinecap="round"
-                  filter="url(#glow-ladder)" opacity={0.85}
-                />
-                {/* Rungs */}
-                {Array.from({ length: 4 }, (_, ri) => {
-                  const t = (ri + 1) / 5
-                  const rx = line.x1 + (line.x2 - line.x1) * t
-                  const ry = line.y1 + (line.y2 - line.y1) * t
-                  return (
-                    <line key={ri}
-                      x1={rx - 4} y1={ry} x2={rx + 4} y2={ry}
-                      stroke="#00ff88" strokeWidth={2} strokeLinecap="round"
-                      filter="url(#glow-ladder)" opacity={0.7}
-                    />
-                  )
-                })}
-                {/* Endpoints */}
-                <circle cx={line.x1} cy={line.y1} r={5} fill="#00ff88" filter="url(#glow-ladder)" opacity={0.9} />
-                <circle cx={line.x2} cy={line.y2} r={5} fill="#00ff88" filter="url(#glow-ladder)" opacity={0.9} />
-              </>
-            ) : (
-              <>
-                {/* Chute: wavy snake */}
-                <path
-                  d={`M ${line.x1} ${line.y1} C ${line.x1 + 20} ${(line.y1 + line.y2) / 2 - 20}, ${line.x2 - 20} ${(line.y1 + line.y2) / 2 + 20}, ${line.x2} ${line.y2}`}
-                  stroke="#ff00e5" strokeWidth={5} fill="none" strokeLinecap="round"
-                  filter="url(#glow-chute)" opacity={0.8}
-                />
-                <circle cx={line.x1} cy={line.y1} r={6} fill="#ff00e5" filter="url(#glow-chute)" opacity={0.9} />
-                <circle cx={line.x2} cy={line.y2} r={4} fill="#ff00e5" filter="url(#glow-chute)" opacity={0.7} />
-              </>
-            )}
-          </g>
-        ))}
+        {svgLines.map((line, i) => {
+          const isActive = activatedSpecial?.from === line.from
+          const isLadder = line.type === 'ladder'
+
+          return (
+            <g key={i}>
+              {isLadder ? (
+                <>
+                  <motion.line
+                    x1={line.x1 - 4} y1={line.y1} x2={line.x2 - 4} y2={line.y2}
+                    stroke="#00ff88" strokeWidth={isActive ? 4 : 3} strokeLinecap="round"
+                    filter={isActive ? 'url(#glow-active)' : 'url(#glow-ladder)'}
+                    animate={isActive ? { opacity: [1, 0.3, 1, 0.3, 1, 0.3, 1] } : { opacity: 0.85 }}
+                    transition={isActive ? { duration: 0.6 } : {}}
+                  />
+                  <motion.line
+                    x1={line.x1 + 4} y1={line.y1} x2={line.x2 + 4} y2={line.y2}
+                    stroke="#00ff88" strokeWidth={isActive ? 4 : 3} strokeLinecap="round"
+                    filter={isActive ? 'url(#glow-active)' : 'url(#glow-ladder)'}
+                    animate={isActive ? { opacity: [1, 0.3, 1, 0.3, 1, 0.3, 1] } : { opacity: 0.85 }}
+                    transition={isActive ? { duration: 0.6 } : {}}
+                  />
+                  {Array.from({ length: 4 }, (_, ri) => {
+                    const t = (ri + 1) / 5
+                    const rx = line.x1 + (line.x2 - line.x1) * t
+                    const ry = line.y1 + (line.y2 - line.y1) * t
+                    return (
+                      <line key={ri}
+                        x1={rx - 4} y1={ry} x2={rx + 4} y2={ry}
+                        stroke="#00ff88" strokeWidth={2} strokeLinecap="round"
+                        filter="url(#glow-ladder)" opacity={0.7}
+                      />
+                    )
+                  })}
+                  <circle cx={line.x1} cy={line.y1} r={isActive ? 7 : 5} fill="#00ff88" filter={isActive ? 'url(#glow-active)' : 'url(#glow-ladder)'} opacity={0.9} />
+                  <circle cx={line.x2} cy={line.y2} r={isActive ? 7 : 5} fill="#00ff88" filter={isActive ? 'url(#glow-active)' : 'url(#glow-ladder)'} opacity={0.9} />
+                </>
+              ) : (
+                <>
+                  <motion.path
+                    d={`M ${line.x1} ${line.y1} C ${line.x1 + 20} ${(line.y1 + line.y2) / 2 - 20}, ${line.x2 - 20} ${(line.y1 + line.y2) / 2 + 20}, ${line.x2} ${line.y2}`}
+                    stroke="#ff00e5" strokeWidth={isActive ? 7 : 5} fill="none" strokeLinecap="round"
+                    filter={isActive ? 'url(#glow-active)' : 'url(#glow-chute)'}
+                    animate={isActive ? { opacity: [1, 0.3, 1, 0.3, 1, 0.3, 1] } : { opacity: 0.8 }}
+                    transition={isActive ? { duration: 0.6 } : {}}
+                  />
+                  <circle cx={line.x1} cy={line.y1} r={isActive ? 8 : 6} fill="#ff00e5" filter={isActive ? 'url(#glow-active)' : 'url(#glow-chute)'} opacity={0.9} />
+                  <circle cx={line.x2} cy={line.y2} r={isActive ? 6 : 4} fill="#ff00e5" filter={isActive ? 'url(#glow-active)' : 'url(#glow-chute)'} opacity={0.7} />
+                </>
+              )}
+            </g>
+          )
+        })}
       </svg>
 
       {/* Player tokens */}

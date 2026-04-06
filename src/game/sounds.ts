@@ -1,4 +1,4 @@
-// Web Audio API sound effects — no external files needed
+import { settings } from './settings'
 
 let ctx: AudioContext | null = null
 
@@ -14,6 +14,7 @@ function resumeCtx() {
 }
 
 function playTone(freq: number, duration: number, type: OscillatorType = 'sine', gain = 0.3) {
+  if (settings.muted) return
   const c = resumeCtx()
   const osc = c.createOscillator()
   const g = c.createGain()
@@ -28,6 +29,7 @@ function playTone(freq: number, duration: number, type: OscillatorType = 'sine',
 }
 
 function playNoise(duration: number, gain = 0.15) {
+  if (settings.muted) return
   const c = resumeCtx()
   const bufSize = c.sampleRate * duration
   const buf = c.createBuffer(1, bufSize, c.sampleRate)
@@ -46,7 +48,6 @@ function playNoise(duration: number, gain = 0.15) {
 
 export const sounds = {
   dice() {
-    // Rattling dice: short noise bursts
     playNoise(0.08, 0.2)
     setTimeout(() => playNoise(0.06, 0.18), 80)
     setTimeout(() => playNoise(0.07, 0.15), 150)
@@ -54,13 +55,12 @@ export const sounds = {
   },
 
   ladder() {
-    // Ascending arpeggio
     const notes = [330, 440, 550, 660, 880]
     notes.forEach((freq, i) => setTimeout(() => playTone(freq, 0.15, 'sine', 0.25), i * 80))
   },
 
   chute() {
-    // Descending glide
+    if (settings.muted) return
     const c = resumeCtx()
     const osc = c.createOscillator()
     const g = c.createGain()
@@ -80,7 +80,6 @@ export const sounds = {
   },
 
   win() {
-    // Fanfare
     const melody = [523, 659, 784, 1047, 784, 1047]
     const times  = [0,   150, 300,  450,  550,  650]
     melody.forEach((freq, i) => setTimeout(() => playTone(freq, 0.25, 'sine', 0.3), times[i]))
@@ -94,5 +93,19 @@ export const sounds = {
   turn() {
     playTone(550, 0.08, 'sine', 0.15)
     setTimeout(() => playTone(660, 0.08, 'sine', 0.15), 100)
+  },
+
+  powerup() {
+    // Ascending sparkle arpeggio
+    const notes = [660, 784, 988, 1175, 1319]
+    notes.forEach((freq, i) => setTimeout(() => playTone(freq, 0.12, 'sine', 0.22), i * 70))
+    setTimeout(() => playTone(1568, 0.25, 'sine', 0.28), notes.length * 70)
+  },
+
+  bonusRoll() {
+    // Excited two-tone jingle
+    playTone(784, 0.1, 'sine', 0.25)
+    setTimeout(() => playTone(1047, 0.1, 'sine', 0.28), 100)
+    setTimeout(() => playTone(1319, 0.18, 'sine', 0.3), 200)
   },
 }

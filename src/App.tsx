@@ -5,11 +5,15 @@ import { SetupScreen } from './components/SetupScreen'
 import { GameScreen } from './components/GameScreen'
 
 export default function App() {
-  const { state, startGame, resetGame, humanRoll, aiTakeTurn } = useGameState()
+  const { state, startGame, resetGame, humanRoll, aiTakeTurn, dispatch } = useGameState()
 
   const handleAITurn = useCallback((playerIndex: number) => {
     aiTakeTurn(playerIndex)
   }, [aiTakeTurn])
+
+  const handleClearTaunt = useCallback(() => {
+    dispatch({ type: 'SET_TAUNT', taunt: null })
+  }, [dispatch])
 
   return (
     <div className="font-game">
@@ -37,6 +41,7 @@ export default function App() {
               onHumanRoll={humanRoll}
               onAITurn={handleAITurn}
               onReset={resetGame}
+              onClearTaunt={handleClearTaunt}
             />
           </motion.div>
         )}

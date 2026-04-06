@@ -1,28 +1,44 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { GameState } from '../hooks/useGameState'
+import { settings } from '../game/settings'
 import { Board } from './Board'
 import { PlayerPanel } from './PlayerPanel'
 import { WinScreen } from './WinScreen'
+import { SpeechBubble } from './SpeechBubble'
+import { GameToolbar } from './GameToolbar'
 
 interface Props {
   state: GameState
   onHumanRoll: () => void
   onAITurn: (playerIndex: number) => void
   onReset: () => void
+  onClearTaunt: () => void
 }
 
-export function GameScreen({ state, onHumanRoll, onAITurn, onReset }: Props) {
-  const { players, currentTurn, lastRoll, isAnimating, message, phase, winner } = state
+export function GameScreen({ state, onHumanRoll, onAITurn, onReset, onClearTaunt }: Props) {
+  const { players, currentTurn, lastRoll, isAnimating, message, phase, winner, activatedSpecial, activeTaunt, bonusRollActive } = state
   const aiTriggered = useRef(false)
   const [boardSize, setBoardSize] = useState(340)
+  const [muted, setMuted] = useState(false)
+  const [speed, setSpeed] = useState(1)
+
+  const handleToggleMute = useCallback(() => {
+    const next = !settings.muted
+    settings.setMuted(next)
+    setMuted(next)
+  }, [])
+
+  const handleSetSpeed = useCallback((v: number) => {
+    settings.setSpeed(v)
+    setSpeed(v)
+  }, [])
 
   // Responsive board size
   useEffect(() => {
     const calc = () => {
       const vw = window.innerWidth
       const vh = window.innerHeight
-      // Board sits in top portion, panel in bottom ~200px
-      const available = Math.min(vw - 16, vh - 220)
+      const available = Math.min(vw - 16, vh - 240)
       setBoardSize(Math.max(280, Math.min(400, available)))
     }
     calc()
@@ -66,14 +82,24 @@ export function GameScreen({ state, onHumanRoll, onAITurn, onReset }: Props) {
           className="font-game font-black text-sm text-neon-cyan"
           style={{ textShadow: '0 0 10px #00f5ff' }}
         >
-          CHUTES & LADDERS
+          C &amp; L
         </span>
-        <div className="w-16" />
+        <GameToolbar
+          muted={muted}
+          speed={speed}
+          onToggleMute={handleToggleMute}
+          onSetSpeed={handleSetSpeed}
+        />
       </div>
 
-      {/* Board */}
-      <div className="px-2 mt-1">
-        <Board players={players} size={boardSize} />
+      {/* Board + speech bubble overlay */}
+      <div className="relative px-2 mt-1">
+        <Board
+          players={players}
+          size={boardSize}
+          activatedSpecial={activatedSpecial}
+        />
+        <SpeechBubble taunt={activeTaunt} onDismiss={onClearTaunt} />
       </div>
 
       {/* Player panel */}
@@ -85,6 +111,7 @@ export function GameScreen({ state, onHumanRoll, onAITurn, onReset }: Props) {
           isAnimating={isAnimating}
           onHumanRoll={onHumanRoll}
           message={message}
+          bonusRollActive={bonusRollActive}
         />
       </div>
     </div>

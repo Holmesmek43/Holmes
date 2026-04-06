@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 
 const DOTS: Record<number, number[][]> = {
   1: [[50, 50]],
@@ -19,6 +19,7 @@ interface Props {
 
 export function Dice({ value, rolling, neonColor, onClick, disabled }: Props) {
   const displayValue = value ?? 1
+  const isSix = value === 6
 
   return (
     <motion.button
@@ -29,12 +30,30 @@ export function Dice({ value, rolling, neonColor, onClick, disabled }: Props) {
         disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer active:scale-90'
       }`}
       style={{
-        borderColor: neonColor,
-        boxShadow: rolling ? `0 0 20px ${neonColor}, 0 0 40px ${neonColor}50` : `0 0 8px ${neonColor}60`,
+        borderColor: isSix ? '#ffe500' : neonColor,
+        boxShadow: rolling
+          ? `0 0 20px ${neonColor}, 0 0 40px ${neonColor}50`
+          : isSix
+          ? '0 0 14px #ffe500, 0 0 28px #ffe50050'
+          : `0 0 8px ${neonColor}60`,
       }}
       animate={rolling ? { rotate: [0, 180, 360, 540, 720], scale: [1, 1.1, 0.9, 1.1, 1] } : { rotate: 0, scale: 1 }}
       transition={rolling ? { duration: 0.5, ease: 'easeInOut' } : { duration: 0.15 }}
     >
+      {/* Pulsing ring on 6 */}
+      <AnimatePresence>
+        {isSix && !rolling && (
+          <motion.div
+            key="six-ring"
+            className="absolute inset-0 rounded-2xl border-2 border-neon-yellow"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: [0, 1, 0], scale: [0.9, 1.1, 1] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         <motion.svg
           key={displayValue}
@@ -52,8 +71,8 @@ export function Dice({ value, rolling, neonColor, onClick, disabled }: Props) {
               cx={cx}
               cy={cy}
               r={10}
-              fill={neonColor}
-              style={{ filter: `drop-shadow(0 0 4px ${neonColor})` }}
+              fill={isSix ? '#ffe500' : neonColor}
+              style={{ filter: `drop-shadow(0 0 4px ${isSix ? '#ffe500' : neonColor})` }}
             />
           ))}
         </motion.svg>
